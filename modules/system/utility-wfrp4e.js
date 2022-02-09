@@ -426,6 +426,32 @@ export default class WFRP_Utility {
     }
   }
 
+  
+  static miracleGainedDialog(miracle, actor)
+  {
+    let xp = 100 * (actor.getItemTypes("prayer").filter(p => p.prayerType.value == "miracle").length + 1)
+    if (xp) {
+      new Dialog({
+        title: game.i18n.localize("DIALOG.GainPrayer"),
+        content: `<p>${game.i18n.format("DIALOG.GainPrayerContent", { xp })}</p>`,
+        buttons: {
+          ok: {
+            label: game.i18n.localize("Ok"),
+            callback: () => {
+              let newSpent = actor.details.experience.spent + xp
+              let log = actor._addToExpLog(xp, game.i18n.format("LOG.GainPrayer", { name: miracle.name }), newSpent)
+              actor.update({ "data.details.experience.spent": newSpent, "data.details.experience.log": log })
+            }
+          },
+          free: {
+            label: game.i18n.localize("Free"),
+            callback: () => { }
+          }
+        }
+      }).render(true)
+    }
+  }
+
   static calculateSpellCost(spell, actor)
   {
     let cost = 0
@@ -973,9 +999,7 @@ export default class WFRP_Utility {
     let item
     // Not technically an item, used for convenience
     if (itemType == "characteristic") {
-      return actor.setupCharacteristic(itemName, bypassData).then(setupData => {
-        actor.basicTest(setupData)
-      });
+      return actor.setupCharacteristic(itemName, bypassData).then(test => test.roll());
     }
     else {
       item = actor ? actor.getItemTypes(itemType).find(i => i.name === itemName) : null;
@@ -985,23 +1009,15 @@ export default class WFRP_Utility {
     // Trigger the item roll
     switch (item.type) {
       case "weapon":
-        return actor.setupWeapon(item, bypassData).then(setupData => {
-          actor.weaponTest(setupData)
-        });
+        return actor.setupWeapon(item, bypassData).then(test => test.roll());
       case "spell":
         return actor.sheet.spellDialog(item, bypassData)
       case "prayer":
-        return actor.setupPrayer(item, bypassData).then(setupData => {
-          actor.prayerTest(setupData)
-        });
+        return actor.setupPrayer(item, bypassData).then(test => test.roll());
       case "trait":
-        return actor.setupTrait(item, bypassData).then(setupData => {
-          actor.traitTest(setupData)
-        });
+        return actor.setupTrait(item, bypassData).then(test => test.roll());
       case "skill":
-        return actor.setupSkill(item, bypassData).then(setupData => {
-          actor.basicTest(setupData)
-        });
+        return actor.setupSkill(item, bypassData).then(test => test.roll());
     }
   }
 
